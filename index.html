@@ -1,4 +1,4 @@
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DLAB Caps</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@ nav ul a{text-decoration:none;color:var(--mut)}nav ul a:hover{color:var(--fg)}
 .hero h1{font-size:clamp(40px,7vw,80px);font-weight:300;max-width:12em}
 .hero p{color:var(--mut);max-width:34em;margin:24px auto 32px;font-size:19px}
 .hero2{position:relative;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;min-height:min(82vh,780px);margin-inline:calc(50% - 50vw);padding:56px calc(50vw - 50%);overflow:hidden;background:#0a0a0a;isolation:isolate}.hero2>div{display:block}.hero-bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;z-index:-2}.hero-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(10,10,10,.92) 0%,rgba(10,10,10,.78) 34%,rgba(10,10,10,.18) 62%,rgba(10,10,10,.05) 100%),linear-gradient(0deg,#0a0a0a 0%,rgba(10,10,10,0) 22%)}.hero-copy{position:relative;max-width:560px}.hero2 .hero-logo{order:0;width:120px;margin:0 0 28px}.hero2 h1{max-width:9em;text-shadow:0 2px 24px rgba(0,0,0,.45)}.hero2 p{margin:24px 0 32px;color:#cfcfca}.vbtn{position:absolute;top:16px;right:max(16px,calc(50vw - 520px));font:500 12px var(--body);letter-spacing:.06em;color:#fff;background:rgba(10,10,10,.55);border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:7px 14px;cursor:pointer;backdrop-filter:blur(6px)}.vbtn:hover{background:rgba(10,10,10,.85)}.vbtn .v-pause{display:none}.hero2.paused .v-play{display:none}.hero2.paused .v-pause{display:inline}@media(max-width:900px){.hero.hero2{flex-direction:column;justify-content:flex-start;align-items:center;min-height:0;text-align:center;padding:calc(100vw*1.08) calc(50vw - 50%) 44px !important}.hero-bg{height:133.4vw;width:100%;object-position:50% 50%}.hero-shade{inset:auto;top:0;left:0;right:0;height:133.4vw;background:linear-gradient(0deg,#0a0a0a 0%,rgba(10,10,10,.85) 22%,rgba(10,10,10,0) 48%)}.hero-copy{max-width:none;width:100%}.hero2 .hero-logo{margin:0 auto 16px;width:96px}.hero2 h1{margin:0 auto}.hero2 p{margin:16px auto 24px}.vbtn{right:16px;top:12px}}
-.sheet{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;background:var(--stage);border-radius:4px;overflow:hidden}
+.sheet{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;background:transparent;border-radius:4px;overflow:visible;position:relative;isolation:isolate}
 .sheet figure{margin:0;padding:18px 6px 12px;min-width:0}
 .sheet svg{display:block;width:100%;height:auto}.sheet img{display:block;width:100%;aspect-ratio:1;object-fit:contain}.stage img{display:block;width:100%;height:124px;object-fit:contain}.stage img:only-child{height:156px}
 .sheet figcaption{font:400 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:#55575a;text-align:center;padding-top:10px}
@@ -132,7 +132,7 @@ function nz(s){return s.replace(/\s+/g,' ').trim()}
 Object.keys(D).forEach(function(k){Dn[nz(k)]=D[k];if(/[A-Za-z]/.test(k))DU[nz(k).toUpperCase()]=D[k].toUpperCase()});
 Object.keys(C).forEach(function(k){CU[nz(k).toUpperCase()]=C[k].toUpperCase()});
 function has(o,k){return Object.prototype.hasOwnProperty.call(o,k)}
-var SUBP={'crown':'la corona','top brim':'la visera superior','under brim':'la visera inferior','inside front 2 panels':'el interior de los 2 paneles frontales'};
+var SUBP={'all cap':'toda la gorra','crown':'la corona','top brim':'la visera superior','under brim':'la visera inferior','inside front 2 panels':'el interior de los 2 paneles frontales'};
 var LOC={'Front':'Frente','Back':'Atrás','Right Side':'Lado derecho','Left Side':'Lado izquierdo','Top':'Arriba','Under Brim':'Debajo de la visera','Other':'Otro'};
 var RULES=[
  [/^Quantity: choose at least (\d+) caps, in steps of (\d+)$/,function(m){return 'Cantidad: elija al menos '+m[1]+' gorras, en múltiplos de '+m[2]}],
