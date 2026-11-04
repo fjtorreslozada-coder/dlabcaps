@@ -1,0 +1,7 @@
+name = "dlab-ai"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+PROVIDER = "gemini"
+ALLOWED_ORIGINS = "https://dlabcaps.com,https://www.dlabcaps.com"
