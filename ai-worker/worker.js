@@ -34,7 +34,7 @@ export default {
     let body; try { body = await req.json() } catch (e) { return J({ error: 'bad json' }, 400, cors) }
     const views = (body.views || []).slice(0, 3).filter(v => v && typeof v.jpg === 'string' && v.jpg.length < 1500000);
     if (!views.length) return J({ error: 'no views' }, 400, cors);
-    const desc = String(body.prompt || '').slice(0, 1800);
+    const desc = String(body.prompt || '').slice(0, 4000);
 
     // daily limit per visitor (IP + email)
     const limit = +(env.DAILY_LIMIT || 4);
@@ -48,7 +48,7 @@ export default {
 
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
-      const p = `${BASE}\nView: ${v.name}.\n${desc}`;
+      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
@@ -59,9 +59,14 @@ export default {
   }
 };
 
-const BASE = 'Turn this flat technical drawing of a cap into one photorealistic studio product photo of the same cap, seen from the same angle. ' +
-  'Keep exactly: the shape, the panel seams, every color, the fabric of each part, and every logo or embroidery with the same artwork, size and position. ' +
-  'Do not add, remove or change any text, logo or detail. Real fabric texture, real stitching, soft studio light, light warm-gray seamless background, soft shadow, sharp focus, e-commerce catalog photo. No people, no props, no watermark.';
+const BASE = 'You are a product photographer for a custom headwear factory. The attached image is a flat technical drawing that is the EXACT specification of one cap. ' +
+  'Create one photorealistic studio product photo of this same cap from the same angle. ' +
+  'Match the drawing exactly: silhouette, crown height, number and position of panels and seams, brim shape, eyelets, top button, closure, and the color of every single part. ' +
+  'Use the hex colors given below as the true colors; the drawing shows where each color goes. ' +
+  'Logos and text: same artwork, same letters, same colors, same size and same position as the drawing. Never invent, add, remove, translate or restyle any logo or text. ' +
+  'Materials must look real: visible fabric weave or knit, real thread stitching, natural folds and soft shading. ' +
+  'Background: light warm-gray seamless studio paper with a soft natural shadow. Soft even studio lighting, sharp focus, high detail, e-commerce catalog style. No people, no mannequin, no props, no watermark, no extra text.';
+const CHECK = 'Before finishing, check: every part has the exact color listed (including the back closure and the underside of the brim), the logos match the drawing, and nothing was added.';
 
 async function gemini(env, prompt, b64) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
