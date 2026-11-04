@@ -44,7 +44,7 @@ export default {
     const desc = String(body.prompt || '').slice(0, 4000);
 
     // daily limit per visitor (IP + email)
-    const limit = +(env.CLIENT_LIMIT || 6);
+    const limit = +(env.CLIENT_LIMIT || 12);
     const day0 = new Date().toISOString().slice(0, 10), ip = req.headers.get('cf-connecting-ip') || 'x', em = String(body.email || '').toLowerCase().slice(0, 80);
     const dk = String(body.design || '').slice(0, 64);
     if (env.DB) {
