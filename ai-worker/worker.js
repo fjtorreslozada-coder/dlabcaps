@@ -19,6 +19,7 @@
  *   RL               optional KV namespace binding used for the daily limit
  */
 import { accounts } from './accounts.js';
+const PHOTOS_V = 3; // shown at the worker URL, to confirm which version is deployed
 const J = (o, s, h) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', ...(h || {}) } });
 
 export default {
@@ -34,7 +35,7 @@ export default {
       try { return await accounts(req, env, ctx, url, (o2, s2) => J(o2, s2, cors)); }
       catch (e) { return J({ error: 'server', message: String(e && e.message || e).slice(0, 200) }, 500, cors); }
     }
-    if (req.method === 'GET') return J({ ok: true, provider: env.PROVIDER || 'gemini', accounts: !!env.DB, mail: !!env.RESEND_API_KEY }, 200, cors);
+    if (req.method === 'GET') return J({ ok: true, provider: env.PROVIDER || 'gemini', accounts: !!env.DB, mail: !!env.RESEND_API_KEY, photos: PHOTOS_V }, 200, cors);
     if (req.method !== 'POST') return J({ error: 'method' }, 405, cors);
     if (!ok) return J({ error: 'origin not allowed' }, 403, cors);
 
@@ -68,7 +69,7 @@ export default {
     const run = (v, ref) => {
       const useRef = !!ref && provider === 'gemini';
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${useRef ? REF + '\n' : ''}${String(v.note || ('View: ' + v.name)).slice(0, 400)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      const p = `${BASE}\n${useRef ? REF + '\n' : ''}${String(v.note || ('View: ' + v.name)).slice(0, 700)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
@@ -94,7 +95,8 @@ const BASE = 'You are a product photographer for a custom headwear factory. The 
   'Materials must look real: a fine subtle fabric weave in the same solid color, real thread stitching, natural folds and soft shading. ' +
   'Background: light warm-gray seamless studio paper with a soft natural shadow. Soft even studio lighting, sharp focus, high detail, e-commerce catalog style. No people, no mannequin, no props, no watermark, no extra text.';
 const REF = 'The LAST attached image is the finished photo of this same physical cap from the front; the image or images before it are the drawings for this view. Match that photo exactly: same fabric, same colors, same crown height and proportions, same lighting and background. ' +
-  'Take the angle, seams, closure and logo placement only from the drawings. A logo appears only where the drawings for this view show it; do not copy the front logo onto a view whose drawing does not show it.';
+  'This view is the same cap rotated: the crown fabric here is the same fabric seen in that photo, so if the photo shows plain fabric, this view shows plain fabric with no pattern. ' +
+  'Take the angle, seams, closure and logo placement only from the drawings. A logo appears only where the drawings for this view show it; do not copy the front logo onto a view whose drawing does not show it, and never invent letters.';
 const CHECK = 'Before finishing, check: every part has the exact solid color listed (including the back closure and the underside of the brim), the proportions match the drawing, the logos match the drawing, and nothing was added.';
 
 async function gemini(env, prompt, b64, b64b, ref) {
