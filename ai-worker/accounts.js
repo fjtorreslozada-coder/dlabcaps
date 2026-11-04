@@ -122,7 +122,7 @@ export async function accounts(req, env, ctx, url, J) {
   if (p === '/designs' && req.method === 'POST') {
     const st = JSON.stringify(body.state || {});
     if (st.length > 900000) return J({ error: 'too_big' }, 413);
-    const photos = JSON.stringify((body.photos || []).slice(0, 3).filter(x => typeof x === 'string' && x.length < 250000));
+    const photos = JSON.stringify((body.photos || []).slice(0, 4).filter(x => typeof x === 'string' && x.length < 250000));
     const thumb = typeof body.thumb === 'string' && body.thumb.length < 200000 ? body.thumb : '';
     const n = now();
     let id = clean(body.id, 40);

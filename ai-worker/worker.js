@@ -39,13 +39,19 @@ export default {
     if (!ok) return J({ error: 'origin not allowed' }, 403, cors);
 
     let body; try { body = await req.json() } catch (e) { return J({ error: 'bad json' }, 400, cors) }
-    const views = (body.views || []).slice(0, 3).filter(v => v && typeof v.jpg === 'string' && v.jpg.length < 1500000);
+    const views = (body.views || []).slice(0, 4).filter(v => v && typeof v.jpg === 'string' && v.jpg.length < 1500000);
     if (!views.length) return J({ error: 'no views' }, 400, cors);
     const desc = String(body.prompt || '').slice(0, 4000);
 
     // daily limit per visitor (IP + email)
-    const limit = +(env.DAILY_LIMIT || 4);
-    if (env.RL) {
+    const limit = +(env.DAILY_LIMIT || 1);
+    const day0 = new Date().toISOString().slice(0, 10), ip = req.headers.get('cf-connecting-ip') || 'x', em = String(body.email || '').toLowerCase().slice(0, 80);
+    if (env.DB) {
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_usage (k TEXT PRIMARY KEY, n INTEGER)').run();
+      const keys = ['ip:' + day0 + ':' + ip].concat(em ? ['em:' + day0 + ':' + em] : []);
+      for (const k of keys) { const r = await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind(k).first(); if (r && r.n >= (k.startsWith('ip:') ? limit * 3 : limit)) return J({ error: 'limit', message: 'Daily limit reached' }, 429, cors); }
+      for (const k of keys) await env.DB.prepare('INSERT INTO ai_usage (k,n) VALUES (?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(k).run();
+    } else if (env.RL) {
       const day = new Date().toISOString().slice(0, 10);
       const who = (req.headers.get('cf-connecting-ip') || 'x') + '|' + String(body.email || '').toLowerCase().slice(0, 80);
       const key = 'rl:' + day + ':' + who, n = +(await env.RL.get(key) || 0);
@@ -55,11 +61,12 @@ export default {
 
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
+      const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
       const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
-      return gemini(env, p, b64);
+      return gemini(env, p, b64, b64b);
     };
     const out = await Promise.all(views.map(v => run(v).then(img => ({ name: v.name, img }), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
     return J({ images: out, provider }, 200, cors);
@@ -75,12 +82,12 @@ const BASE = 'You are a product photographer for a custom headwear factory. The 
   'Background: light warm-gray seamless studio paper with a soft natural shadow. Soft even studio lighting, sharp focus, high detail, e-commerce catalog style. No people, no mannequin, no props, no watermark, no extra text.';
 const CHECK = 'Before finishing, check: every part has the exact color listed (including the back closure and the underside of the brim), the logos match the drawing, and nothing was added.';
 
-async function gemini(env, prompt, b64) {
+async function gemini(env, prompt, b64, b64b) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
   const model = env.GEMINI_MODEL || 'gemini-2.5-flash-image';
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: b64 } }] }], generationConfig: { responseModalities: ['IMAGE'] } })
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: b64 } }].concat(b64b ? [{ inline_data: { mime_type: 'image/jpeg', data: b64b } }] : []) }], generationConfig: { responseModalities: ['IMAGE'] } })
   });
   const j = await r.json();
   if (!r.ok) throw new Error((j.error && j.error.message) || ('gemini ' + r.status));
