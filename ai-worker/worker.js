@@ -65,15 +65,21 @@ export default {
     }
 
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
-    const run = v => {
+    const run = (v, ref) => {
+      const useRef = !!ref && provider === 'gemini';
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      const p = `${BASE}\n${useRef ? REF + '\n' : ''}${String(v.note || ('View: ' + v.name)).slice(0, 400)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
-      return gemini(env, p, b64, b64b);
+      return gemini(env, p, b64, b64b, useRef ? ref : null);
     };
-    const out = await Promise.all(views.map(v => run(v).then(img => ({ name: v.name, img }), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
+    const one = (v, ref) => run(v, ref).then(img => ({ name: v.name, img }), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }));
+    // The front photo is made first, then shown to the model for the other views, so all the photos are the same physical cap.
+    const first = views.find(v => v.name === 'front');
+    const lead = first ? await one(first) : null;
+    const rest = await Promise.all(views.filter(v => v !== first).map(v => one(v, lead && lead.img)));
+    const out = views.map(v => (v === first ? lead : rest.find(r => r.name === v.name)));
     return J({ images: out, provider }, 200, cors);
   }
 };
@@ -83,17 +89,27 @@ const BASE = 'You are a product photographer for a custom headwear factory. The 
   'Match the drawing exactly: silhouette, crown height, number and position of panels and seams, brim shape, eyelets, top button, closure, and the color of every single part. ' +
   'Use the hex colors given below as the true colors; the drawing shows where each color goes. ' +
   'Logos and text: same artwork, same letters, same colors, same size and same position as the drawing. Never invent, add, remove, translate or restyle any logo or text. ' +
-  'Materials must look real: visible fabric weave or knit, real thread stitching, natural folds and soft shading. ' +
+  'Keep the exact proportions of the drawing: same crown height, same crown width, same brim length and same size in the frame. Never make the cap taller, shorter, wider or smaller, and never change its style or profile. ' +
+  'Fabric is solid-dyed: one flat color per part, exactly as listed. Colors never mix or bleed between parts. Never add a print, pattern, sublimation, camouflage, tie-dye, tribal or geometric motif, stripes, brush strokes, streaks, gradient or mottling unless the SPECIFICATION says the customer chose a pattern. ' +
+  'Materials must look real: a fine subtle fabric weave in the same solid color, real thread stitching, natural folds and soft shading. ' +
   'Background: light warm-gray seamless studio paper with a soft natural shadow. Soft even studio lighting, sharp focus, high detail, e-commerce catalog style. No people, no mannequin, no props, no watermark, no extra text.';
-const CHECK = 'Before finishing, check: every part has the exact color listed (including the back closure and the underside of the brim), the logos match the drawing, and nothing was added.';
+const REF = 'The LAST attached image is the finished photo of this same physical cap from the front; the image or images before it are the drawings for this view. Match that photo exactly: same fabric, same colors, same crown height and proportions, same lighting and background. ' +
+  'Take the angle, seams, closure and logo placement only from the drawings. A logo appears only where the drawings for this view show it; do not copy the front logo onto a view whose drawing does not show it.';
+const CHECK = 'Before finishing, check: every part has the exact solid color listed (including the back closure and the underside of the brim), the proportions match the drawing, the logos match the drawing, and nothing was added.';
 
-async function gemini(env, prompt, b64, b64b) {
+async function gemini(env, prompt, b64, b64b, ref) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
   const model = env.GEMINI_MODEL || 'gemini-2.5-flash-image';
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const parts0 = [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: b64 } }];
+  if (b64b) parts0.push({ inline_data: { mime_type: 'image/jpeg', data: b64b } });
+  const m = ref && /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(ref);
+  if (m) parts0.push({ inline_data: { mime_type: m[1], data: m[2] } });
+  const call = generationConfig => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: b64 } }].concat(b64b ? [{ inline_data: { mime_type: 'image/jpeg', data: b64b } }] : []) }], generationConfig: { responseModalities: ['IMAGE'] } })
+    body: JSON.stringify({ contents: [{ role: 'user', parts: parts0 }], generationConfig })
   });
+  let r = await call({ responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } });
+  if (r.status === 400) r = await call({ responseModalities: ['IMAGE'] }); // a model that does not take imageConfig; the square input still sets the shape
   const j = await r.json();
   if (!r.ok) throw new Error((j.error && j.error.message) || ('gemini ' + r.status));
   const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
