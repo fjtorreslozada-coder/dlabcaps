@@ -44,13 +44,18 @@ export default {
     const desc = String(body.prompt || '').slice(0, 4000);
 
     // daily limit per visitor (IP + email)
-    const limit = +(env.DAILY_LIMIT || 1);
+    const limit = +(env.CLIENT_LIMIT || 6);
     const day0 = new Date().toISOString().slice(0, 10), ip = req.headers.get('cf-connecting-ip') || 'x', em = String(body.email || '').toLowerCase().slice(0, 80);
+    const dk = String(body.design || '').slice(0, 64);
     if (env.DB) {
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_usage (k TEXT PRIMARY KEY, n INTEGER)').run();
-      const keys = ['ip:' + day0 + ':' + ip].concat(em ? ['em:' + day0 + ':' + em] : []);
-      for (const k of keys) { const r = await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind(k).first(); if (r && r.n >= (k.startsWith('ip:') ? limit * 3 : limit)) return J({ error: 'limit', message: 'Daily limit reached' }, 429, cors); }
-      for (const k of keys) await env.DB.prepare('INSERT INTO ai_usage (k,n) VALUES (?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(k).run();
+      const get = async k => ((await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind(k).first()) || {}).n || 0;
+      const bump = k => env.DB.prepare('INSERT INTO ai_usage (k,n) VALUES (?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(k).run();
+      const who = em || ('ip:' + ip);
+      if (dk && await get('dk:' + who + ':' + dk)) return J({ error: 'same_design', message: 'Photos for this design were already created' }, 429, cors);
+      if (await get('cl:' + who) >= limit) return J({ error: 'limit', message: 'Client limit reached' }, 429, cors);
+      if (await get('ip:' + day0 + ':' + ip) >= limit * 3) return J({ error: 'limit', message: 'Too many today' }, 429, cors);
+      await bump('cl:' + who); await bump('ip:' + day0 + ':' + ip); if (dk) await bump('dk:' + who + ':' + dk);
     } else if (env.RL) {
       const day = new Date().toISOString().slice(0, 10);
       const who = (req.headers.get('cf-connecting-ip') || 'x') + '|' + String(body.email || '').toLowerCase().slice(0, 80);
