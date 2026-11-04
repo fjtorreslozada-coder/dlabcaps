@@ -1,0 +1,50 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>DLAB Caps · Admin</title>
+<style>
+:root{--bg:#0b0b0b;--card:#161616;--ink:#f3f1ec;--mut:#9b978f;--line:#2a2a2a;--acc:#d4401c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+h1{font-size:18px;margin:0}h1 span{color:var(--acc)}main{max-width:1100px;margin:0 auto;padding:16px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+input{font:inherit;padding:10px;border-radius:8px;border:1px solid var(--line);background:#111;color:var(--ink);width:100%}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.stats div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}.stats b{display:block;font-size:22px}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mut);font-weight:500;font-size:13px}
+tr.u{cursor:pointer}tr.u:hover td{background:#1c1c1c}small,.mut{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer}.card img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;display:block}.card div{padding:8px 10px;font-size:13px}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:#2a2a2a;margin-right:4px}
+.ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.ph img{width:100%;border-radius:8px;background:#fff}
+pre{white-space:pre-wrap;background:#111;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;max-height:420px;overflow:auto}
+.back{margin-bottom:12px}#q{max-width:320px}.msg{color:#e8892a;margin-top:8px}
+@media(max-width:640px){.hide-m{display:none}}
+</style></head><body>
+<header><h1>DLAB <span>CAPS</span> · Admin</h1><div id="hd"></div></header>
+<main id="app"><p class="mut">Cargando…</p></main>
+<script>
+const EP='https://dlabai.dlabstorepr.workers.dev',app=document.getElementById('app'),hd=document.getElementById('hd');
+let S=null;try{S=JSON.parse(localStorage.getItem('dlab_sess')||'null')}catch(e){}
+const H=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dt=n=>n?new Date(n).toLocaleString('es-PR',{dateStyle:'medium',timeStyle:'short'}):'—';
+async function api(p,o){const r=await fetch(EP+p,{method:(o&&o.method)||'GET',headers:{'content-type':'application/json',...(S?{authorization:'Bearer '+S}:{})},body:o&&o.body?JSON.stringify(o.body):undefined});const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||r.status);e.status=r.status;throw e}return j}
+function login(msg){hd.innerHTML='';app.innerHTML=`<div class="box" style="max-width:420px"><h2 style="margin-top:0">Entrar al panel</h2><p class="mut">${msg||'Escriba su email de administrador. Le enviamos un enlace para entrar.'}</p><form id="f"><input id="e" type="email" required placeholder="dlabstorepr@gmail.com"><button class="p" style="margin-top:10px;width:100%">Enviarme el enlace</button></form><p class="msg" id="m"></p></div>`;
+ document.getElementById('f').onsubmit=async ev=>{ev.preventDefault();try{await api('/auth/login',{method:'POST',body:{email:document.getElementById('e').value,lang:'es'}});document.getElementById('m').textContent='Listo. Revise su email y toque el enlace (abre el cotizador; luego toque "Panel admin").'}catch(e){document.getElementById('m').textContent='No se pudo enviar ahora.'}}}
+async function users(){hd.innerHTML=`<button id="rf">Actualizar</button>`;document.getElementById('rf').onclick=users;app.innerHTML='<p class="mut">Cargando clientes…</p>';
+ let j;try{j=await api('/admin/users')}catch(e){return login(e.status===404||e.status===401?'Esta cuenta no tiene acceso de administrador, o su sesión terminó. Entre con su email de administrador.':'No se pudo conectar con el servidor.')}
+ const U=j.users,tot=U.reduce((a,u)=>a+(u.designs||0),0),wk=Date.now()-7*864e5;
+ const draw=f=>{const L=U.filter(u=>!f||[u.name,u.email,u.company].join(' ').toLowerCase().includes(f));document.getElementById('tb').innerHTML=L.map(u=>`<tr class="u" data-id="${u.id}"><td><b>${H(u.name)}</b><br><small>${H(u.email)}</small>${u.verified?'':' <span class="pill">sin confirmar</span>'}</td><td class="hide-m">${H(u.company||'')}</td><td>${u.designs}</td><td class="hide-m"><small>${dt(u.last_design||u.created)}</small></td></tr>`).join('')||'<tr><td colspan="4" class="mut">No hay clientes.</td></tr>';document.querySelectorAll('tr.u').forEach(r=>r.onclick=()=>user(r.dataset.id))};
+ app.innerHTML=`<div class="stats"><div><b>${U.length}</b><small>clientes</small></div><div><b>${tot}</b><small>diseños</small></div><div><b>${U.filter(u=>u.created>wk).length}</b><small>nuevos esta semana</small></div></div>
+ <div class="box"><input id="q" placeholder="Buscar nombre, email o empresa"><table style="margin-top:10px"><thead><tr><th>Cliente</th><th class="hide-m">Empresa</th><th>Diseños</th><th class="hide-m">Última actividad</th></tr></thead><tbody id="tb"></tbody></table></div>`;
+ document.getElementById('q').oninput=e=>draw(e.target.value.trim().toLowerCase());draw('')}
+async function user(id){app.innerHTML='<p class="mut">Cargando…</p>';const j=await api('/admin/users/'+id),u=j.user;
+ app.innerHTML=`<button class="back" id="bk">← Clientes</button><div class="box"><h2 style="margin:0">${H(u.name)}</h2><p class="mut" style="margin:4px 0 0">${H(u.email)}${u.company?' · '+H(u.company):''}${u.phone?' · '+H(u.phone):''}<br>Cuenta creada ${dt(u.created)} · ${u.verified?'email confirmado':'email sin confirmar'}</p><p style="margin:10px 0 0"><a style="color:#e8892a" href="mailto:${H(u.email)}">Escribirle</a></p></div>
+ <h3>Diseños (${j.designs.length})</h3><div class="grid">${j.designs.map(d=>`<div class="card" data-id="${d.id}">${d.thumb?`<img src="${d.thumb}" alt="">`:''}<div><b>${H(d.name)}</b><br>${H(d.summary||'')}<br><span class="pill">${d.status==='confirmed'?'cotización enviada':'guardado'}</span>${d.total?`<span class="pill">${H(d.total)}</span>`:''}<br><small>${dt(d.updated)}</small></div></div>`).join('')||'<p class="mut">Sin diseños todavía.</p>'}</div>`;
+ document.getElementById('bk').onclick=users;document.querySelectorAll('.card').forEach(c=>c.onclick=()=>design(c.dataset.id,id))}
+async function design(id,uid){app.innerHTML='<p class="mut">Cargando…</p>';const d=(await api('/designs/'+id)).design;
+ app.innerHTML=`<button class="back" id="bk">← Diseños del cliente</button><div class="box"><h2 style="margin:0">${H(d.name)}</h2><p class="mut">${H(d.summary||'')} · ${H(d.total||'')} · ${dt(d.updated)}</p>
+ ${d.thumb?`<img src="${d.thumb}" style="max-width:360px;width:100%;background:#fff;border-radius:8px" alt="">`:''}
+ ${d.photos&&d.photos.length?`<h3>Fotos realistas</h3><div class="ph">${d.photos.map(p=>`<a href="${p}" download="foto.jpg"><img src="${p}" alt=""></a>`).join('')}</div>`:''}
+ <h3>Cotización</h3><pre>${H(d.quote||'—')}</pre></div>`;document.getElementById('bk').onclick=()=>user(uid)}
+S?users():login();
+</script></body></html>

@@ -949,6 +949,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('tp').classList.re
   try{const j=JSON.parse(await f.text());if(j.type!=='cap-designs'||!Array.isArray(j.designs))throw 0;
    j.designs.forEach(x=>{if(x&&x.name&&x.d){const k=D.findIndex(y=>y.name===x.name);if(k>=0)D[k]=x;else D.push(x)}});persist();list();msg('Designs imported.')}catch(_){msg('That file is not a saved-designs file.')}};
  list();
+ window.__snap=snap;window.__restore=restore;
 })();
 render();
 
@@ -1141,6 +1142,121 @@ const c=$('confirm');
  if(c&&!$('aibtn')){const ab=document.createElement('button');ab.id='aibtn';ab.type='button';ab.className='aibtn';ab.innerHTML='✨ '+T('See realistic photos of my cap','Ver fotos realistas de mi gorra');c.after(ab);ab.onclick=()=>{c.click();setTimeout(()=>{const tp=$('tp');if(tp&&tp.classList.contains('on')){const x=$('aiph');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});return}const mb=$('missbox'),h=$('hint');let m=$('aimiss');if(!m){m=document.createElement('p');m.id='aimiss';m.className='note';m.style.cssText='color:#e8892a;font-weight:600;margin:6px 0 0';ab.after(m)}m.textContent=T('Finish the missing steps first, then tap this button again.','Primero complete los pasos que faltan y vuelva a tocar este botón.')+((h&&h.textContent.trim())?' '+h.textContent.trim():'');(mb&&!mb.hidden?mb:m).scrollIntoView({behavior:'smooth',block:'center'})},250)}}
  new MutationObserver(()=>{const bar=document.querySelector('#tp .tpb');if(bar&&!bar.querySelector('#tpai')){const t=document.createElement('button');t.id='tpai';t.className='go';t.type='button';t.textContent='✨ '+T('Realistic photos','Fotos realistas');t.onclick=()=>{let x=$('aiph');if(!x||!x.querySelector('img,.aisp'))run(true);x=$('aiph');if(x)x.scrollIntoView({behavior:'smooth',block:'start'})};bar.prepend(t)}}).observe(document.getElementById('tp')||document.body,{childList:true});
  if(c){const prev=c.onclick;c.onclick=function(ev){const r=prev&&prev.call(this,ev);setTimeout(()=>{const tp=$('tp');if(tp&&tp.classList.contains('on'))run(false)},60);return r}}
+})();</script>
+
+<script>/* ===== DLAB accounts (sign-up, My account, auto-save) ===== */
+(function(){
+const $=id=>document.getElementById(id),EP=()=>(window.DLAB_AI_ENDPOINT||'').replace(/\/$/,'');
+const es=()=>{try{return window.DLANG&&DLANG()==='es'}catch(e){return false}},T=(a,b)=>es()?b:a;
+const KS='dlab_sess',KU='dlab_user',KG='dlab_guest';
+const ld=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},sv=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const H=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let SESS=ld(KS),USER=ld(KU),CUR=null,ADMIN=false;
+async function api(path,opt){opt=opt||{};const h={'content-type':'application/json'};if(SESS)h.authorization='Bearer '+SESS;
+ const r=await fetch(EP()+path,{method:opt.method||(opt.body?'POST':'GET'),headers:h,body:opt.body?JSON.stringify(opt.body):undefined});
+ const j=await r.json().catch(()=>({}));if(r.status===401&&SESS){SESS=null;sv(KS,null)}if(!r.ok){const e=new Error(j.error||r.status);e.status=r.status;throw e}return j}
+function fill(u){if(!u)return;[['name',u.name],['email',u.email],['co',u.company]].forEach(([i,v])=>{const e=$(i);if(e&&v&&!e.value){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))}})}
+/* ---------- styles ---------- */
+const css=document.createElement('style');css.textContent=`
+#acbar{max-width:1200px;margin:0 auto;display:flex;justify-content:flex-end;gap:8px;padding:0 16px}
+#acbar button{width:auto;margin:0;padding:7px 14px;font-size:13px;border-radius:99px}
+.acov{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(24px,env(safe-area-inset-top)) 14px 24px}
+.acov[hidden]{display:none}
+.acbx{background:#fff;color:#111;border-radius:14px;max-width:460px;width:100%;padding:24px;margin:auto 0;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.acbx.wide{max-width:900px}
+.acbx h2{margin:0 0 6px;font-size:22px;color:#111}.acbx p{color:#444;font-size:14px;line-height:1.45;margin:0 0 14px}
+.acbx label{display:block;font-size:13px;color:#555;margin:0 0 10px}
+.acbx input{width:100%;margin-top:4px;padding:11px;border:1px solid #ccc;border-radius:8px;font:inherit;color:#111;background:#fff}
+.acbx input[type=email],.acbx input[type=text],.acbx input:not([type]){background:#fff!important;color:#111!important;border:1px solid #ccc!important}
+.acbx .acgo{width:100%;margin-top:6px;background:#d4401c;color:#fff;border:0;padding:13px;border-radius:9px;font-weight:700;font-size:15px}
+.acbx .aclk{background:none;border:0;color:#d4401c;padding:6px 0;width:auto;margin:6px 0 0;font-size:14px;text-decoration:underline}
+.acbx .acmsg{font-size:13px;color:#b33;min-height:1em;margin:8px 0 0}
+.acbx .acok{color:#1d7a3a}
+.acx{float:right;background:none;border:0;font-size:26px;line-height:1;color:#555;width:auto;margin:-6px -6px 0 0;padding:4px 8px}
+.acgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-top:12px}
+.accard{border:1px solid #e3e0da;border-radius:10px;overflow:hidden;background:#faf9f6;display:flex;flex-direction:column}
+.accard img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;display:block}
+.accard .acb{padding:8px 10px;font-size:13px;color:#222;flex:1}.accard .acb b{display:block;font-size:14px}.accard .acb small{color:#777}
+.accard .acf{display:flex;gap:6px;padding:0 10px 10px}.accard .acf button{flex:1;margin:0;padding:7px;font-size:12px;border-radius:7px;background:#fff;color:#111;border:1px solid #bbb;width:auto}
+.accard .acf button.p{background:#111;color:#fff;border-color:#111}
+.acpills{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0}.acpills span{font-size:11px;padding:2px 8px;border-radius:99px;background:#eee;color:#444}
+.actoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9600;background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:90vw}`;
+document.head.appendChild(css);
+function toast(t){const d=document.createElement('div');d.className='actoast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}
+function ov(id,html,wide){let o=$(id);if(!o){o=document.createElement('div');o.id=id;o.className='acov';document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o&&o.dataset.closable)o.hidden=true})}o.innerHTML=`<div class="acbx${wide?' wide':''}">${html}</div>`;o.hidden=false;const x=o.querySelector('.acx');if(x)x.onclick=()=>o.hidden=true;return o}
+/* ---------- sign up gate ---------- */
+function gate(force){let sg=null;try{sg=sessionStorage.getItem(KG)}catch(e){}if(SESS||(!force&&(ld(KG)||sg)))return;
+ const o=ov('acgate',`<h2>${T('Create your account to design your cap','Cree su cuenta para diseñar su gorra')}</h2>
+ <p>${T('It takes a few seconds. Every design you make is saved in your account, with its mockup and realistic photos.','Toma unos segundos. Cada diseño que haga se guarda en su cuenta, con su mockup y sus fotos realistas.')}</p>
+ <form id="acf"><label>${T('Full name','Nombre completo')}<input id="acn" required autocomplete="name" minlength="2"></label>
+ <label>Email<input id="ace" type="email" required autocomplete="email" inputmode="email"></label>
+ <label>${T('Company or team (optional)','Empresa o equipo (opcional)')}<input id="acc" autocomplete="organization"></label>
+ <button class="acgo" type="submit">${T('Start designing','Empezar a diseñar')}</button>
+ <p class="acmsg" id="acm"></p></form>
+ <button type="button" class="aclk" id="acl">${T('I already have an account','Ya tengo cuenta')}</button>`);
+ const p=ld('dlab_profile')||{};if(p.name)$('acn').value=p.name;if(p.email)$('ace').value=p.email;if(p.co)$('acc').value=p.co;
+ $('acl').onclick=()=>loginBox();
+ $('acf').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;$('acm').textContent='';
+  const u={name:$('acn').value.trim(),email:$('ace').value.trim().toLowerCase(),company:$('acc').value.trim(),lang:es()?'es':'en'};
+  try{const j=await api('/auth/register',{body:u});
+   if(j.status==='ok'){SESS=j.token;USER=j.user;sv(KS,SESS);sv(KU,USER);fill(u);o.hidden=true;bar();toast(T('Account created. We sent a welcome email to ','Cuenta creada. Le enviamos un email de bienvenida a ')+u.email);return}
+   if(j.status==='check_email'){USER=u;sv(KU,u);fill(u);sv(KG,1);o.querySelector('.acbx').innerHTML=`<h2>${T('Welcome back!','¡Bienvenido de vuelta!')}</h2><p>${T('That email already has an account. We sent you a sign-in link so you can see your saved designs. You can keep designing now.','Ese email ya tiene cuenta. Le enviamos un enlace para entrar y ver sus diseños guardados. Puede seguir diseñando ahora.')}</p><button class="acgo" type="button" id="acgo2">${T('Continue','Continuar')}</button>`;$('acgo2').onclick=()=>o.hidden=true;bar();return}}
+  catch(err){if(err.status===400){$('acm').textContent=T('Check your name and email.','Revise su nombre y email.');b.disabled=false;return}
+   /* accounts not available: let them design anyway */
+   USER=u;sv(KU,u);try{sessionStorage.setItem(KG,'1')}catch(_){}fill(u);o.hidden=true;return}
+  b.disabled=false}}
+function loginBox(){const o=ov('acgate',`<button class="acx" aria-label="Close">&times;</button><h2>${T('Sign in','Entrar')}</h2><p>${T('Enter your email and we will send you a sign-in link.','Escriba su email y le enviamos un enlace para entrar.')}</p>
+ <form id="aclf"><label>Email<input id="acle" type="email" required autocomplete="email"></label><button class="acgo" type="submit">${T('Send me the link','Enviarme el enlace')}</button><p class="acmsg" id="aclm"></p></form>
+ <button type="button" class="aclk" id="acnew">${T('Create a new account','Crear una cuenta nueva')}</button>`);o.dataset.closable=1;
+ const x=o.querySelector('.acx');if(x)x.onclick=()=>{o.hidden=true;if(!SESS&&!ld(KG))sv(KG,1)};
+ $('acnew').onclick=()=>gate(true);
+ $('aclf').onsubmit=async e=>{e.preventDefault();const m=$('aclm');try{await api('/auth/login',{body:{email:$('acle').value.trim(),lang:es()?'es':'en'}});m.className='acmsg acok';m.textContent=T('Done. Check your email (and spam folder) and tap the link.','Listo. Revise su email (y la carpeta de spam) y toque el enlace.')}catch(err){m.className='acmsg';m.textContent=T('Could not send the link right now. Try again later.','No se pudo enviar el enlace ahora. Intente más tarde.')}}}
+/* ---------- top bar ---------- */
+function bar(){let b=$('acbar');if(!b){b=document.createElement('div');b.id='acbar';const h=document.querySelector('header');(h&&h.parentNode)?h.parentNode.insertBefore(b,h):document.body.prepend(b)}
+ b.innerHTML=SESS?`${ADMIN?`<button type="button" class="alt" id="acadm">${T('Admin panel','Panel admin')}</button>`:''}<button type="button" class="alt" id="acme">👤 ${T('My account','Mi cuenta')}${USER&&USER.name?' · '+H(USER.name.split(' ')[0]):''}</button>`:`<button type="button" class="alt" id="acin">${T('Sign in','Entrar')}</button>`;
+ if($('acme'))$('acme').onclick=account;if($('acin'))$('acin').onclick=loginBox;if($('acadm'))$('acadm').onclick=()=>{location.href='admin.html'}}
+/* ---------- My account ---------- */
+async function account(){const o=ov('acacct',`<button class="acx" aria-label="Close">&times;</button><h2>${T('My account','Mi cuenta')}</h2><p>${T('Loading…','Cargando…')}</p>`,1);o.dataset.closable=1;
+ try{const j=await api('/me');USER=j.user;sv(KU,USER);ADMIN=!!j.admin;bar();
+  const st={saved:T('Saved','Guardado'),confirmed:T('Quote sent','Cotización enviada')};
+  o.querySelector('.acbx').innerHTML=`<button class="acx" aria-label="Close">&times;</button><h2>${T('My account','Mi cuenta')}</h2>
+  <p><b>${H(j.user.name)}</b> · ${H(j.user.email)}${j.user.company?' · '+H(j.user.company):''}${j.user.verified?'':`<br><small style="color:#b55">${T('Confirm your email with the link we sent you to open your account on other devices.','Confirme su email con el enlace que le enviamos para abrir su cuenta en otros equipos.')}</small>`}</p>
+  <h3 style="margin:14px 0 0;font-size:16px">${T('My designs','Mis diseños')} (${j.designs.length})</h3>
+  ${j.designs.length?`<div class="acgrid">${j.designs.map(d=>`<div class="accard">${d.thumb?`<img src="${d.thumb}" alt="">`:''}<div class="acb"><b>${H(d.name||T('Design','Diseño'))}</b>${H(d.summary||'')}<div class="acpills"><span>${st[d.status]||H(d.status||'')}</span>${d.total?`<span>${H(d.total)}</span>`:''}</div><small>${new Date(d.updated).toLocaleDateString()}</small></div><div class="acf"><button type="button" class="p" data-open="${d.id}">${T('Open','Abrir')}</button><button type="button" data-del="${d.id}">${T('Delete','Borrar')}</button></div></div>`).join('')}</div>`:`<p style="margin-top:8px">${T('No designs yet. Confirm your order or save a design and it will appear here.','Todavía no tiene diseños. Confirme su orden o guarde un diseño y aparecerá aquí.')}</p>`}
+  <button type="button" class="aclk" id="acout">${T('Sign out','Salir')}</button>`;
+  o.querySelector('.acx').onclick=()=>o.hidden=true;
+  $('acout').onclick=async()=>{try{await api('/auth/logout',{body:{}})}catch(e){}SESS=null;USER=null;sv(KS,null);sv(KU,null);sv(KG,null);o.hidden=true;bar();toast(T('Signed out.','Sesión cerrada.'))};
+  o.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDesign(b.dataset.open));
+  o.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirmDel())return;try{await api('/designs/'+b.dataset.del,{method:'DELETE'});if(CUR===b.dataset.del)CUR=null;account()}catch(e){toast(T('Could not delete.','No se pudo borrar.'))}})}
+ catch(e){o.querySelector('.acbx').innerHTML=`<button class="acx" aria-label="Close">&times;</button><h2>${T('My account','Mi cuenta')}</h2><p>${e.status===401?T('Your session ended. Sign in again.','Su sesión terminó. Entre otra vez.'):T('Your account is not available right now. Your designs on this device are still in “My profile & saved designs”.','Su cuenta no está disponible ahora. Sus diseños en este equipo siguen en “Mi perfil y diseños guardados”.')}</p>`;o.querySelector('.acx').onclick=()=>o.hidden=true;if(e.status===401){bar();setTimeout(loginBox,800)}}}
+let delArm=0;function confirmDel(){const n=Date.now();if(n-delArm<4000){delArm=0;return true}delArm=n;toast(T('Tap Delete again to confirm.','Toque Borrar otra vez para confirmar.'));return false}
+async function openDesign(id){try{const j=await api('/designs/'+id);if(window.__restore){window.__restore(j.design.state);CUR=id;const dn=$('dname');if(dn)dn.value=j.design.name||''}const o=$('acacct');if(o)o.hidden=true;toast(T('Design loaded. Change what you need and confirm again.','Diseño cargado. Cambie lo que necesite y confirme otra vez.'));const s=$('styles');if(s)s.scrollIntoView({behavior:'smooth'})}catch(e){toast(T('Could not open that design.','No se pudo abrir ese diseño.'))}}
+/* ---------- auto-save ---------- */
+function svgJpg(svg,max,q){return new Promise(res=>{try{const c=svg.cloneNode(true);c.querySelectorAll('[data-rs],[data-rt]').forEach(e=>e.remove());const vb=(c.getAttribute('viewBox')||'0 0 300 200').split(/[\s,]+/).map(Number),k=max/Math.max(vb[2],vb[3]),W=Math.round(vb[2]*k),Hh=Math.round(vb[3]*k);c.setAttribute('xmlns','http://www.w3.org/2000/svg');c.setAttribute('width',W);c.setAttribute('height',Hh);c.removeAttribute('class');
+ const img=new Image();img.onload=()=>{const cv=document.createElement('canvas');cv.width=W;cv.height=Hh;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,Hh);x.drawImage(img,0,0,W,Hh);res(cv.toDataURL('image/jpeg',q||.82))};img.onerror=()=>res('');img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(c))}catch(e){res('')}})}
+function shrink(src,max){return new Promise(res=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{try{const k=Math.min(1,max/Math.max(i.naturalWidth,i.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(i.naturalWidth*k);c.height=Math.round(i.naturalHeight*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.8))}catch(e){res('')}};i.onerror=()=>res('');i.src=src})}
+async function save(status,photos){if(!SESS||!window.__snap)return;
+ try{const S=state();let st=window.__snap();let js=JSON.stringify(st);if(js.length>850000){st=JSON.parse(js);Object.values(st.PL||{}).forEach(p=>{if(p.logo)p.logo.url=null});st.logo=null}
+  const cell=document.querySelector('#lv > div:nth-child(1) svg')||document.querySelector('#lv svg');const thumb=cell?await svgJpg(cell,420,.8):'';
+  let q='';try{q=quoteText()}catch(e){}
+  const nm=(($('dname')||{}).value||'').trim()||S.s[0]+' · '+new Date().toLocaleDateString();
+  const j=await api('/designs',{body:{id:CUR,name:nm,summary:S.s[0]+' · '+S.q+' pcs',total:'$'+(S.total||0).toFixed(2),status,state:st,quote:q,thumb,photos:photos||[]}});CUR=j.id;return j.id}catch(e){if(e.status===401)bar()}}
+window.dlabAcct={save,account,gate,loginBox,get session(){return SESS}};
+/* hook: confirm => save as confirmed; manual save button => save too; AI photos => attach */
+const c=$('confirm');if(c){const prev=c.onclick;c.onclick=function(ev){const r=prev&&prev.call(this,ev);setTimeout(()=>{const tp=$('tp');if(tp&&tp.classList.contains('on'))save('confirmed')},120);return r}}
+const ds=$('dsave');if(ds){const p2=ds.onclick;ds.onclick=function(ev){const r=p2&&p2.call(this,ev);save('saved').then(id=>{if(id)toast(T('Saved to your account too.','También se guardó en su cuenta.'))});return r}}
+let lastPh=null;setInterval(async()=>{const L=window.DLAB_AI_LAST;if(!L||L===lastPh||!SESS||!CUR)return;lastPh=L;const ph=[];for(const x of (L.images||[]))if(x.img)ph.push(await shrink(x.img,560));if(ph.length)save('confirmed',ph)},2500);
+/* ---------- start ---------- */
+async function start(){
+ const m=/#acct=([a-z0-9]+)/i.exec(location.hash);
+ if(m){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}try{const j=await api('/auth/verify',{body:{token:m[1]}});SESS=j.token;USER=j.user;ADMIN=!!j.admin;sv(KS,SESS);sv(KU,USER);sv(KG,null);fill(USER);bar();toast(T('Welcome, ','Bienvenido, ')+(USER.name||'')+'!');setTimeout(account,400);return}catch(e){toast(T('That link expired. Ask for a new one.','Ese enlace venció. Pida uno nuevo.'));setTimeout(loginBox,600)}}
+ let live=false;try{const h=await fetch(EP()+'/',{cache:'no-store'}).then(r=>r.json());live=!!h.accounts}catch(e){}
+ if(!live){if(USER)fill(USER);return}
+ bar();if(USER)fill(USER);
+ if(SESS){api('/me').then(j=>{USER=j.user;ADMIN=!!j.admin;sv(KU,USER);bar()}).catch(()=>{})}
+ else setTimeout(()=>gate(false),400)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+addEventListener('hashchange',()=>{if(/#acct=/.test(location.hash))start()});
 })();</script>
 
 <!--I18N--><script>(function(){

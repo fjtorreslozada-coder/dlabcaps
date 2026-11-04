@@ -18,16 +18,23 @@
  *   DAILY_LIMIT      tries per visitor per day, default 4
  *   RL               optional KV namespace binding used for the daily limit
  */
+import { accounts } from './accounts.js';
 const J = (o, s, h) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', ...(h || {}) } });
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const allowed = (env.ALLOWED_ORIGINS || 'https://dlabcaps.com,https://www.dlabcaps.com').split(',').map(s => s.trim()).filter(Boolean);
     const origin = req.headers.get('origin') || '';
     const ok = allowed.includes('*') || allowed.includes(origin);
-    const cors = { 'access-control-allow-origin': ok ? origin : allowed[0], 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type', vary: 'origin' };
+    const cors = { 'access-control-allow-origin': ok ? origin : allowed[0], 'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS', 'access-control-allow-headers': 'content-type, authorization', vary: 'origin' };
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (req.method === 'GET') return J({ ok: true, provider: env.PROVIDER || 'gemini' }, 200, cors);
+    const url = new URL(req.url);
+    if (/^\/(auth|me|designs|admin)(\/|$)/.test(url.pathname)) {
+      if (!ok) return J({ error: 'origin not allowed' }, 403, cors);
+      try { return await accounts(req, env, ctx, url, (o2, s2) => J(o2, s2, cors)); }
+      catch (e) { return J({ error: 'server', message: String(e && e.message || e).slice(0, 200) }, 500, cors); }
+    }
+    if (req.method === 'GET') return J({ ok: true, provider: env.PROVIDER || 'gemini', accounts: !!env.DB, mail: !!env.RESEND_API_KEY }, 200, cors);
     if (req.method !== 'POST') return J({ error: 'method' }, 405, cors);
     if (!ok) return J({ error: 'origin not allowed' }, 403, cors);
 
