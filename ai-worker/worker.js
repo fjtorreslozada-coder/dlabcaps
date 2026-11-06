@@ -19,7 +19,7 @@
  *   DAILY_LIMIT      tries per visitor per day, default 4
  *   RL               optional KV namespace binding used for the daily limit
  */
-import { accounts } from './accounts.js';
+import { accounts, adminFrom } from './accounts.js';
 const J = (o, s, h) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', ...(h || {}) } });
 
 export default {
@@ -48,7 +48,8 @@ export default {
     const limit = +(env.CLIENT_LIMIT || 12);
     const day0 = new Date().toISOString().slice(0, 10), ip = req.headers.get('cf-connecting-ip') || 'x', em = String(body.email || '').toLowerCase().slice(0, 80);
     const dk = String(body.design || '').slice(0, 64);
-    if (env.DB) {
+    const admin = await adminFrom(req, env);
+    if (env.DB && !admin) {
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_usage (k TEXT PRIMARY KEY, n INTEGER)').run();
       const get = async k => ((await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind(k).first()) || {}).n || 0;
       const bump = k => env.DB.prepare('INSERT INTO ai_usage (k,n) VALUES (?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(k).run();
@@ -57,7 +58,7 @@ export default {
       if (await get('cl:' + who) >= limit) return J({ error: 'limit', message: 'Client limit reached' }, 429, cors);
       if (await get('ip:' + day0 + ':' + ip) >= limit * 3) return J({ error: 'limit', message: 'Too many today' }, 429, cors);
       await bump('cl:' + who); await bump('ip:' + day0 + ':' + ip); if (dk) await bump('dk:' + who + ':' + dk);
-    } else if (env.RL) {
+    } else if (env.RL && !admin) {
       const day = new Date().toISOString().slice(0, 10);
       const who = (req.headers.get('cf-connecting-ip') || 'x') + '|' + String(body.email || '').toLowerCase().slice(0, 80);
       const key = 'rl:' + day + ':' + who, n = +(await env.RL.get(key) || 0);

@@ -64,6 +64,8 @@ async function magicLink(db, uid) {
   return `${SITE}/order.html#acct=${t}`;
 }
 
+export async function adminFrom(req, env) { try { if (!env.DB) return false; await init(env.DB); return isAdmin(env, await userFrom(req, env.DB)); } catch (e) { return false; } }
+
 export async function accounts(req, env, ctx, url, J) {
   const db = env.DB;
   if (!db) return J({ error: 'accounts_not_configured' }, 503);
