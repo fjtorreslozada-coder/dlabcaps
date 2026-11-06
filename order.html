@@ -249,10 +249,10 @@ CLOSURES.push(["Other (describe below)",0]);
 const EMBS=[...G("Embroidery",[["Flat Embroidery",0.56],["3D Embroidery",0.84],["Combination Embroidery",0.94],["Chenille Embroidery",1.31],["Chain Stitch Embroidery",1.13],["Sublimated Embroidery",1.13],["Metallic Embroidery",0.75]]),
 ...G("Printing",[["Screen Printing",0.38],["Puff Ink Screen Printing",0.56],["High Density Screen Printing",0.75],["Heat Transfer",0.47],["Print + Embroidery Combo",1.03]]),
 ...G("Patches",[["Woven Label Patch",0.66],["Embroidered Patch",0.75],["Screen Printed Patch",0.66],["Sublimated Patch",0.84],["Leather Patch",0.94],["Suede Patch",1.03],["Silicone Patch",0.94],["Silicone Sonic Weld",1.13]]),
-...G("Labels & Tape",[["Woven Label, Running Stitch",0.75],["Woven Label, Zig Zag Stitch",0.75],["Woven Label, Embroidered Edge",0.84],["Sublimated Label",0.66],["Label + Embroidery Combo",1.03],["Sweatband Label",0.38],["Woven Closure Label",0.11]]),
+...G("Labels & Tape",[["Woven Label, Running Stitch",0.75],["Woven Label, Zig Zag Stitch",0.75],["Woven Label, Embroidered Edge",0.84],["Sublimated Label",0.66],["Label + Embroidery Combo",1.03],["Sweatband Label",0.38],["Woven Closure Label",0.15]]),
 ...G("Features",[["Laser Perforation (approx.)",0.98],["Rope on Brim",0.19],["Printed Seam Tape",0.19]])];
 [...new Set(EMBS.map(e=>e[2]))].filter(g=>g!=='Features').forEach(g=>{const k=EMBS.map(e=>e[2]).lastIndexOf(g);EMBS.splice(k+1,0,["Other (describe below)",0,g,"o"])});
-EMBS.push(["Rubber Closure Label",0.19,"Labels & Tape"]);EMBS.push(["Rubber Patch (1 inch)",0.56,"Patches"]); /* appended so saved designs keep their indexes */
+EMBS.push(["Rubber Closure Label",0.25,"Labels & Tape"]);EMBS.push(["Rubber Patch (1 inch)",0.56,"Patches"]); /* appended so saved designs keep their indexes */
 /* ================================================================ */
 const PT=(n,v)=>/^Other/.test(n)?'<span class="pt">Quoted by our team</span>':`<span class="pt">${v>0?"+"+money(v):"Included"}</span>`;
 const $=id=>document.getElementById(id);
@@ -1452,7 +1452,7 @@ function mkBar(){
 function init(){mkBar();obs=new MutationObserver(onMut);observe();setLang(lang,true)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
-</script><!--/I18N--><script>/*DLAB_BUILD:20261106i*/(function(){var B='20261106i';try{fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){var m=/DLAB_BUILD:(\w+)/.exec(t||'');if(m&&m[1]!==B){var k='dlab_rl_'+m[1];if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.reload()}}}).catch(function(){})}catch(e){}})();</script>
+</script><!--/I18N--><script>/*DLAB_BUILD:20261106j*/(function(){var B='20261106j';try{fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){var m=/DLAB_BUILD:(\w+)/.exec(t||'');if(m&&m[1]!==B){var k='dlab_rl_'+m[1];if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.reload()}}}).catch(function(){})}catch(e){}})();</script>
 </body>
 </html>
 
