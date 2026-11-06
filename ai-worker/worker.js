@@ -82,8 +82,8 @@ export default {
       for (let t = 0; t < tries; t++) {
         const v2 = fix ? Object.assign({}, v, { note: 'A PREVIOUS ATTEMPT WAS REJECTED. FIX THESE MISTAKES: ' + fix + '\n' + (v.note || '') }) : v;
         const img = await run(v2);
-        if (provider !== 'gemini' || env.AI_VERIFY === 'off') return { img, checked: false };
-        let res; try { res = await verify(env, v, desc, img); } catch (e) { return { img, checked: false } }
+        if (provider !== 'gemini' || env.AI_VERIFY === 'off') return { img, checked: false, verr: 'off' };
+        let res; try { res = await verify(env, v, desc, img); } catch (e) { return { img, checked: false, verr: String(e && e.message || e).slice(0, 160) } }
         if (res.pass) return { img, checked: true, tries: t + 1 };
         if (!best || res.problems.length < best.n) best = { img, n: res.problems.length, problems: res.problems };
         fix = res.problems.join(' ').slice(0, 900);
@@ -91,7 +91,7 @@ export default {
       return { img: best.img, checked: true, pass: false, problems: best.problems.slice(0, 6), tries };
     };
     const out = await Promise.all(views.map(v => runChecked(v).then(r => Object.assign({ name: v.name }, r), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
-    return J({ images: out, provider }, 200, cors);
+    return J({ images: out, provider, ver: 'v3-check' }, 200, cors);
   }
 };
 
