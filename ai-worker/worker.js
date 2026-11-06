@@ -75,7 +75,22 @@ export default {
       if (provider === 'fal') return fal(env, p, b64);
       return gemini(env, p, b64, b64b);
     };
-    const out = await Promise.all(views.map(v => run(v).then(img => ({ name: v.name, img }), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
+    // generate -> automatic visual check against the drawing and the spec -> one corrected retry if it fails
+    const runChecked = async v => {
+      const tries = Math.max(1, Math.min(3, +(env.AI_TRIES || 2)));
+      let best = null, fix = '';
+      for (let t = 0; t < tries; t++) {
+        const v2 = fix ? Object.assign({}, v, { note: 'A PREVIOUS ATTEMPT WAS REJECTED. FIX THESE MISTAKES: ' + fix + '\n' + (v.note || '') }) : v;
+        const img = await run(v2);
+        if (provider !== 'gemini' || env.AI_VERIFY === 'off') return { img, checked: false };
+        let res; try { res = await verify(env, v, desc, img); } catch (e) { return { img, checked: false } }
+        if (res.pass) return { img, checked: true, tries: t + 1 };
+        if (!best || res.problems.length < best.n) best = { img, n: res.problems.length, problems: res.problems };
+        fix = res.problems.join(' ').slice(0, 900);
+      }
+      return { img: best.img, checked: true, pass: false, problems: best.problems.slice(0, 6), tries };
+    };
+    const out = await Promise.all(views.map(v => runChecked(v).then(r => Object.assign({ name: v.name }, r), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
     return J({ images: out, provider }, 200, cors);
   }
 };
@@ -111,6 +126,34 @@ const BASE = 'Turn this flat technical drawing of a cap into a real photograph o
   'Logos and text keep the same artwork, letters, colors, size and position as in the drawing. Never invent, add, remove, translate or restyle any logo or text. ' +
   'No people, no mannequin head, no props, no watermark, no extra text, no frame or border.';
 const CHECK = 'Before finishing, check: (1) it looks like a real camera photo, not a drawing; (2) every part has the exact color listed, including the back closure, the rope on the brim if any, the underside of the brim and the brim edge (same color as the top of the brim, never black unless listed); (3) the logos match the drawing for this view, each made with the exact technique listed in DECORATIONS (never swapped for another technique), and nothing else is printed on the fabric; (4) the number of panels and the seams match the PANEL LAYOUT exactly (a 5-panel cap has ONE seamless front panel with no center seam; a 6-panel cap has a center front seam); (5) nothing was added.';
+
+const VIEWNAME = { front: 'a straight FRONT view', side: 'a SIDE PROFILE view (camera at 90 degrees to the front, brim seen from the side)', back: 'a straight BACK view showing the closure', q34: 'a THREE-QUARTER FRONT view (about 45 degrees)' };
+async function verify(env, v, desc, img) {
+  const m = /^data:([^;]+);base64,(.*)$/.exec(img || '');
+  if (!m) return { pass: true, problems: [] };
+  const ref = v.jpg.replace(/^data:image\/\w+;base64,/, ''), ref2 = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
+  const q = 'You are a strict quality inspector for a cap factory. The LAST image is an AI photo that must show exactly the cap in the technical drawing' + (ref2 ? 's (first image = front drawing, second = side drawing)' : ' (first image)') + ', seen as ' + (VIEWNAME[v.name] || v.name) + '. ' +
+    'Compare the photo with the drawing and this specification and list every real mistake. Check: ' +
+    '(a) PANEL LAYOUT and seams exactly as specified (for a 5-panel cap any vertical seam running up the middle of the front, or extra seams on the front panel, is a mistake); ' +
+    '(b) the camera angle is ' + (VIEWNAME[v.name] || v.name) + ' as in the drawing; ' +
+    '(c) logos: only the logos listed for this view, in the same place and size as the drawing, same letters and colors, made with the listed technique; a front logo that moved onto a side panel is a mistake; ' +
+    '(d) colors of each part, including the top and underside of the brim, the brim edge (top-of-brim color), the button and the closure; ' +
+    '(e) the rope, if any, lies only on the top of the brim at the front and never continues around the sides or the back of the cap; ' +
+    '(f) closure type and color match; (g) no added prints, text, patterns or decorations; (h) it looks like a real photo. ' +
+    'Ignore lighting, background, small shading differences and fabric texture details. ' +
+    'Answer only JSON: {"pass": true|false, "problems": ["short fix instruction", ...]}. pass is true only if there are no real mistakes.\n\nVIEW NOTE: ' + String(v.note || '').slice(0, 1200) + '\n\nSPECIFICATION:\n' + desc;
+  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: ref } }].concat(ref2 ? [{ inline_data: { mime_type: 'image/jpeg', data: ref2 } }] : []).concat([{ inline_data: { mime_type: m[1], data: m[2] } }, { text: q }]);
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.VERIFY_MODEL || 'gemini-2.5-flash'}:generateContent`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0, thinkingConfig: { thinkingBudget: 1024 } } })
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error((j.error && j.error.message) || ('verify ' + r.status));
+  const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('');
+  const o = JSON.parse(txt.replace(/^```json|```$/g, '').trim());
+  const problems = Array.isArray(o.problems) ? o.problems.map(x => String(x).slice(0, 200)).filter(Boolean) : [];
+  return o.pass ? { pass: true, problems: [] } : { pass: false, problems: problems.length ? problems : ['does not match the drawing'] };
+}
 
 async function gemini(env, prompt, b64, b64b) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
