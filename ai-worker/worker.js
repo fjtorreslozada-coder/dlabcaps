@@ -69,11 +69,13 @@ export default {
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 1800)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      let p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 1800)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
+      const lg = logosOf(v);
+      if (lg.length) p += `\n\nLOGO ARTWORK: the last ${lg.length} attached image${lg.length > 1 ? 's are' : ' is'} the client's real logo file${lg.length > 1 ? 's' : ''} (shown on a plain gray card only so you can see it; the gray card is not part of the cap). The logo on the cap must be EXACTLY this artwork: the same letters, shapes, proportions and colors. Never redraw it as other letters or a different symbol. Use the drawing only for its position and size.`;
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
-      return gemini(env, p, b64, b64b);
+      return gemini(env, p, b64, b64b, lg);
     };
     // generate -> automatic visual check against the drawing and the spec -> one corrected retry if it fails
     const runChecked = async v => {
@@ -119,6 +121,7 @@ const BASE = 'Turn this flat technical drawing of a cap into a real photograph o
   'Picture it: the cap sits on a light warm-gray seamless paper backdrop in a photo studio. A large softbox above and to the left wraps it in soft, even light, and a gentle contact shadow falls beneath the brim and the crown. It is shot on a full-frame DSLR with a 100mm macro lens at f/8, tack sharp, true-to-life color, natural contrast, with the subtle imperfections of a real object. ' +
   'You can see the real material up close: the weave of the fabric, tiny fibers catching the light, rows of tight thread stitching along every seam and around the brim, sewn eyelets, a fabric-covered top button, gentle natural creases where the panels meet the brim, and soft shading that shows the curved volume of the crown. ' +
   'Logos are physically made with EXACTLY the decoration technique named in DECORATIONS below (for example chain stitch, flat embroidery, 3D puff, chenille, a leather or woven patch, or a screen print). Never swap the technique: flat or chain stitch must not become puff, and a print must not become embroidery. Show the real texture of that technique up close. The shading or depth effect on the logos in the drawing is only a preview effect; the technique text decides how the logo is made. ' +
+  'Do not retouch, recolor or trace the drawing: build the cap again as a real three-dimensional object and photograph it, with real volume, perspective, curved surfaces, soft shadows in the folds and seams, and real fabric. Even in a straight front view the crown must look rounded and the brim must show its thickness. ' +
   'The result must be indistinguishable from a real photo. It must not look like a drawing, an illustration, a vector graphic, a cartoon, clip art or a 3D render: no outlines, no flat color fills, no cel shading. ' +
   'The drawing is the blueprint and must be followed exactly: the same silhouette, crown height, panel layout and seams, brim shape and curve, closure, and the same camera angle and framing. ' +
   'The thin dark lines in the drawing are only outlines, not black parts: never turn them into black piping, trim or a black brim edge. The edge of the brim is the same color as the top of the brim unless an edge binding color is listed. Seam thread matches the fabric color. ' +
@@ -132,17 +135,18 @@ async function verify(env, v, desc, img) {
   const m = /^data:([^;]+);base64,(.*)$/.exec(img || '');
   if (!m) return { pass: true, problems: [] };
   const ref = v.jpg.replace(/^data:image\/\w+;base64,/, ''), ref2 = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-  const q = 'You are a strict quality inspector for a cap factory. The LAST image is an AI photo that must show exactly the cap in the technical drawing' + (ref2 ? 's (first image = front drawing, second = side drawing)' : ' (first image)') + ', seen as ' + (VIEWNAME[v.name] || v.name) + '. ' +
+  const lg = logosOf(v);
+  const q = 'You are a strict quality inspector for a cap factory. The LAST image is an AI photo that must show exactly the cap in the technical drawing' + (ref2 ? 's (first image = front drawing, second = side drawing)' : ' (first image)') + ', seen as ' + (VIEWNAME[v.name] || v.name) + '. ' + (lg.length ? 'The ' + lg.length + ' image' + (lg.length > 1 ? 's' : '') + ' just before the photo ' + (lg.length > 1 ? 'are' : 'is') + ' the client\'s real logo artwork on a gray card: the logo in the photo must be this exact artwork (same letters and shapes); different letters or a different symbol is a serious mistake. ' : '') +
     'Compare the photo with the drawing and this specification and list every real mistake. Check: ' +
     '(a) PANEL LAYOUT and seams exactly as specified (for a 5-panel cap any vertical seam running up the middle of the front, or extra seams on the front panel, is a mistake); ' +
     '(b) the camera angle is ' + (VIEWNAME[v.name] || v.name) + ' as in the drawing; ' +
     '(c) logos: only the logos listed for this view, in the same place and size as the drawing, same letters and colors, made with the listed technique; a front logo that moved onto a side panel is a mistake; ' +
     '(d) colors of each part, including the top and underside of the brim, the brim edge (top-of-brim color), the button and the closure; ' +
     '(e) the rope, if any, lies only on the top of the brim at the front and never continues around the sides or the back of the cap; ' +
-    '(f) closure type and color match; (g) no added prints, text, patterns or decorations; (h) it looks like a real photo. ' +
+    '(f) closure type and color match; (g) no added prints, text, patterns or decorations; (h) it looks like a real camera photo: if it still looks like the flat drawing (flat front-on look, drawn outlines, painted or striped fill, uniform flat lighting, no real depth or volume) that is a mistake. ' +
     'Ignore lighting, background, small shading differences and fabric texture details. ' +
     'Answer only JSON: {"pass": true|false, "problems": ["short fix instruction", ...]}. pass is true only if there are no real mistakes.\n\nVIEW NOTE: ' + String(v.note || '').slice(0, 1200) + '\n\nSPECIFICATION:\n' + desc;
-  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: ref } }].concat(ref2 ? [{ inline_data: { mime_type: 'image/jpeg', data: ref2 } }] : []).concat([{ inline_data: { mime_type: m[1], data: m[2] } }, { text: q }]);
+  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: ref } }].concat(ref2 ? [{ inline_data: { mime_type: 'image/jpeg', data: ref2 } }] : []).concat(lg.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))).concat([{ inline_data: { mime_type: m[1], data: m[2] } }, { text: q }]);
   const models = [...new Set([env.VERIFY_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'].filter(Boolean))];
   let o = null, errs = [];
   for (const model of models) {
@@ -166,21 +170,24 @@ async function verify(env, v, desc, img) {
   return o.pass ? { pass: true, problems: [] } : { pass: false, problems: problems.length ? problems : ['does not match the drawing'] };
 }
 
-async function gemini(env, prompt, b64, b64b) {
+function logosOf(v) {
+  return (Array.isArray(v.logos) ? v.logos : []).slice(0, 2).map(x => String(x || '').replace(/^data:image\/\w+;base64,/, '')).filter(x => x && x.length < 1500000);
+}
+async function gemini(env, prompt, b64, b64b, lg) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
   const want = env.GEMINI_MODEL || 'gemini-2.5-flash-image';
-  try { return await geminiCall(env, want, prompt, b64, b64b); }
+  try { return await geminiCall(env, want, prompt, b64, b64b, lg); }
   catch (e) {
     if (want === 'gemini-2.5-flash-image') throw e;
-    return geminiCall(env, 'gemini-2.5-flash-image', prompt, b64, b64b);
+    return geminiCall(env, 'gemini-2.5-flash-image', prompt, b64, b64b, lg);
   }
 }
-async function geminiCall(env, model, prompt, b64, b64b) {
+async function geminiCall(env, model, prompt, b64, b64b, lg) {
   const g3 = /gemini-3/.test(model);
   const generationConfig = g3 ? { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio: '4:3', imageSize: env.GEMINI_SIZE || '1K' } } : { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '4:3' } };
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }].concat(b64b ? [{ inline_data: { mime_type: 'image/jpeg', data: b64b } }] : []).concat([{ text: prompt }]) }], generationConfig })
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }].concat(b64b ? [{ inline_data: { mime_type: 'image/jpeg', data: b64b } }] : []).concat((lg || []).map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))).concat([{ text: prompt }]) }], generationConfig })
   });
   const j = await r.json();
   if (!r.ok) throw new Error((j.error && j.error.message) || ('gemini ' + r.status));
