@@ -69,7 +69,7 @@ export default {
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 900)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 1800)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
@@ -110,7 +110,7 @@ const BASE = 'Turn this flat technical drawing of a cap into a real photograph o
   'Use the hex colors listed below as the true dyed fabric colors under neutral daylight; the drawing shows where each color goes. ' +
   'Logos and text keep the same artwork, letters, colors, size and position as in the drawing. Never invent, add, remove, translate or restyle any logo or text. ' +
   'No people, no mannequin head, no props, no watermark, no extra text, no frame or border.';
-const CHECK = 'Before finishing, check: (1) it looks like a real camera photo, not a drawing; (2) every part has the exact color listed, including the back closure, the rope on the brim if any, the underside of the brim and the brim edge (same color as the top of the brim, never black unless listed); (3) the logos match the drawing for this view, each made with the exact technique listed in DECORATIONS (never swapped for another technique), and nothing else is printed on the fabric; (4) nothing was added.';
+const CHECK = 'Before finishing, check: (1) it looks like a real camera photo, not a drawing; (2) every part has the exact color listed, including the back closure, the rope on the brim if any, the underside of the brim and the brim edge (same color as the top of the brim, never black unless listed); (3) the logos match the drawing for this view, each made with the exact technique listed in DECORATIONS (never swapped for another technique), and nothing else is printed on the fabric; (4) the number of panels and the seams match the PANEL LAYOUT exactly (a 5-panel cap has ONE seamless front panel with no center seam; a 6-panel cap has a center front seam); (5) nothing was added.';
 
 async function gemini(env, prompt, b64, b64b) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
