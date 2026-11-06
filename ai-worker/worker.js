@@ -69,7 +69,7 @@ export default {
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 900)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
@@ -89,7 +89,7 @@ const MATS = [
   [/polyester/i, 'Polyester: fine, smooth performance weave with a slight sheen.'],
   [/cotton|twill/i, 'Cotton twill: fine diagonal weave, matte surface, soft natural texture.'],
   [/acrylic|knit|beanie/i, 'Knit: chunky ribbed knit with visible loops of acrylic yarn and soft fuzz.'],
-  [/rope/i, 'Rope on the brim: a real braided cord with visible twisted strands, sitting on top of the brim where it meets the crown.'],
+  [/rope/i, 'Rope on the brim: a real braided cord with visible twisted strands, lying only on the top of the brim along the seam where the brim meets the crown, from one end of the brim to the other. It never continues around the sides or the back of the cap, and it is not visible in a back view.'],
   [/leather/i, 'Leather strap: real leather grain with stitched edges and a metal buckle or press with true metallic reflections.']
 ];
 function noPrint(desc) {
