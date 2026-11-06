@@ -42,7 +42,7 @@ export default {
     let body; try { body = await req.json() } catch (e) { return J({ error: 'bad json' }, 400, cors) }
     const views = (body.views || []).slice(0, 4).filter(v => v && typeof v.jpg === 'string' && v.jpg.length < 1500000);
     if (!views.length) return J({ error: 'no views' }, 400, cors);
-    const desc = String(body.prompt || '').slice(0, 4000);
+    const desc = String(body.prompt || '').slice(0, 7000);
 
     // daily limit per visitor (IP + email)
     const limit = +(env.CLIENT_LIMIT || 12);
@@ -68,7 +68,7 @@ export default {
     const provider = (env.PROVIDER || 'gemini').toLowerCase();
     const run = v => {
       const b64b = v.jpg2 ? String(v.jpg2).replace(/^data:image\/\w+;base64,/, '') : null;
-      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
+      const p = `${BASE}\n${String(v.note || ('View: ' + v.name)).slice(0, 300)}\n${noPrint(desc)}\n${matLook(desc)}\n\nSPECIFICATION:\n${desc}\n\n${CHECK}`;
       const b64 = v.jpg.replace(/^data:image\/\w+;base64,/, '');
       if (provider === 'openai') return openai(env, p, b64);
       if (provider === 'fal') return fal(env, p, b64);
@@ -91,19 +91,25 @@ const MATS = [
   [/rope/i, 'Rope on the brim: a real braided cord with visible twisted strands, sitting on top of the brim where it meets the crown.'],
   [/leather/i, 'Leather strap: real leather grain with stitched edges and a metal buckle or press with true metallic reflections.']
 ];
+function noPrint(desc) {
+  const s = String(desc || '');
+  const pat = /patterned print|camo|sublimat/i.test(s);
+  return 'PRINTS AND GRAPHICS: ' + (pat ? 'Only the parts marked as patterned print or camo carry a pattern, copied from the drawing; every other part is a plain solid color. ' : 'Every part of this cap is a plain SOLID dyed color: absolutely no prints, no all-over patterns, no florals, no camo, no sublimation, no graphics on the crown, side panels or brim. ') +
+    'The only artwork allowed is the logos shown in the drawing for this exact view, in their exact place. Do not copy a logo from another view, do not repeat it, and do not add any decoration.';
+}
 function matLook(desc) { const s = String(desc || ''); const out = MATS.filter(m => m[0].test(s)).map(m => m[1]); return out.length ? 'MATERIAL LOOK: ' + out.join(' ') : ''; }
 
 const BASE = 'Turn this flat technical drawing of a cap into a real photograph of the finished, physical cap, as if it had been manufactured and then shot for a premium e-commerce catalog. ' +
   'Picture it: the cap sits on a light warm-gray seamless paper backdrop in a photo studio. A large softbox above and to the left wraps it in soft, even light, and a gentle contact shadow falls beneath the brim and the crown. It is shot on a full-frame DSLR with a 100mm macro lens at f/8, tack sharp, true-to-life color, natural contrast, with the subtle imperfections of a real object. ' +
   'You can see the real material up close: the weave of the fabric, tiny fibers catching the light, rows of tight thread stitching along every seam and around the brim, sewn eyelets, a fabric-covered top button, gentle natural creases where the panels meet the brim, and soft shading that shows the curved volume of the crown. ' +
-  'Logos are physically made, never printed flat: raised thread embroidery with satin-stitch sheen, or a real patch with thickness, edges and a tiny shadow on the fabric. ' +
+  'Logos are physically made with EXACTLY the decoration technique named in DECORATIONS below (for example chain stitch, flat embroidery, 3D puff, chenille, a leather or woven patch, or a screen print). Never swap the technique: flat or chain stitch must not become puff, and a print must not become embroidery. Show the real texture of that technique up close. The shading or depth effect on the logos in the drawing is only a preview effect; the technique text decides how the logo is made. ' +
   'The result must be indistinguishable from a real photo. It must not look like a drawing, an illustration, a vector graphic, a cartoon, clip art or a 3D render: no outlines, no flat color fills, no cel shading. ' +
   'The drawing is the blueprint and must be followed exactly: the same silhouette, crown height, panel layout and seams, brim shape and curve, closure, and the same camera angle and framing. ' +
   'The thin dark lines in the drawing are only outlines, not black parts: never turn them into black piping, trim or a black brim edge. The edge of the brim is the same color as the top of the brim unless an edge binding color is listed. Seam thread matches the fabric color. ' +
   'Use the hex colors listed below as the true dyed fabric colors under neutral daylight; the drawing shows where each color goes. ' +
   'Logos and text keep the same artwork, letters, colors, size and position as in the drawing. Never invent, add, remove, translate or restyle any logo or text. ' +
   'No people, no mannequin head, no props, no watermark, no extra text, no frame or border.';
-const CHECK = 'Before finishing, check: (1) it looks like a real camera photo, not a drawing; (2) every part has the exact color listed, including the back closure, the rope on the brim if any, the underside of the brim and the brim edge (same color as the top of the brim, never black unless listed); (3) the logos match the drawing; (4) nothing was added.';
+const CHECK = 'Before finishing, check: (1) it looks like a real camera photo, not a drawing; (2) every part has the exact color listed, including the back closure, the rope on the brim if any, the underside of the brim and the brim edge (same color as the top of the brim, never black unless listed); (3) the logos match the drawing for this view, each made with the exact technique listed in DECORATIONS (never swapped for another technique), and nothing else is printed on the fabric; (4) nothing was added.';
 
 async function gemini(env, prompt, b64, b64b) {
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing');
