@@ -246,7 +246,7 @@ STYLES.forEach(x=>x[1]=+(x[1]-5.5+BASE).toFixed(2));
 const CLALL=[["None / not applicable",0],["Snapback",0],["Velcro",0.125],["Nylon Strap with Clip",0.25],["Fabric Strap with Metal Slide",0.375],["Fabric Strap with Metal Press",0.375],["Fabric Strap with Metal Press and Grommet",0.5],["Fabric with Slide Zipper",0.625],["Leather Strap with Metal Press",0.75],["Leather Strap with Buckle",0.875]];
 const CLOSURES=["Snapback","Velcro","Nylon Strap with Clip","Fabric Strap with Metal Slide","Fabric Strap with Metal Press","Fabric Strap with Metal Press and Grommet","Fabric with Slide Zipper","Leather Strap with Metal Press","Leather Strap with Buckle"].map(n=>CLALL.find(c=>c[0]===n));
 CLOSURES.push(["Other (describe below)",0]);
-const EMBS=[...G("Embroidery",[["Flat Embroidery",0.75],["3D Embroidery",1.125],["Combination Embroidery",1.25],["Chenille Embroidery",1.75],["Chain Stitch Embroidery",1.5],["Sublimated Embroidery",1.5],["Metallic Embroidery",1]]),
+const EMBS=[...G("Embroidery",[["Flat Embroidery",0.6],["3D Embroidery",1.125],["Combination Embroidery",1],["Chenille Embroidery",1.75],["Chain Stitch Embroidery",1.5],["Sublimated Embroidery",1.5],["Metallic Embroidery",1]]),
 ...G("Printing",[["Screen Printing",0.5],["Puff Ink Screen Printing",0.75],["High Density Screen Printing",1],["Heat Transfer",0.625],["Print + Embroidery Combo",1.375]]),
 ...G("Patches",[["Woven Label Patch",0.875],["Embroidered Patch",1],["Screen Printed Patch",0.875],["Sublimated Patch",1.125],["Leather Patch",1.25],["Suede Patch",1.375],["Silicone Patch",1.25],["Silicone Sonic Weld",1.5]]),
 ...G("Labels & Tape",[["Woven Label, Running Stitch",1],["Woven Label, Zig Zag Stitch",1],["Woven Label, Embroidered Edge",1.125],["Sublimated Label",0.875],["Label + Embroidery Combo",1.375],["Sweatband Label",0.5],["Woven Closure Label",0.15]]),
@@ -1452,7 +1452,7 @@ function mkBar(){
 function init(){mkBar();obs=new MutationObserver(onMut);observe();setLang(lang,true)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
-</script><!--/I18N--><script>/*DLAB_BUILD:20261106f*/(function(){var B='20261106f';try{fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){var m=/DLAB_BUILD:(\w+)/.exec(t||'');if(m&&m[1]!==B){var k='dlab_rl_'+m[1];if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.reload()}}}).catch(function(){})}catch(e){}})();</script>
+</script><!--/I18N--><script>/*DLAB_BUILD:20261106g*/(function(){var B='20261106g';try{fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){var m=/DLAB_BUILD:(\w+)/.exec(t||'');if(m&&m[1]!==B){var k='dlab_rl_'+m[1];if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.reload()}}}).catch(function(){})}catch(e){}})();</script>
 </body>
 </html>
 
