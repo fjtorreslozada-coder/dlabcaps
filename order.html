@@ -1150,7 +1150,7 @@ function paint(state,data,msg){const b=box();if(!b)return;
  b.innerHTML=HD()+`<div class="aig">${cells.map(([n])=>{const r=PH[n]||{},L=nm[n]||n;
   if(r.img)return `<figure class="aif"><img src="${r.img}" alt="${L}" crossorigin="anonymous"><figcaption>${L} · <a href="${r.img}" download="dlab-cap-${n}.png" target="_blank" rel="noopener">${T('Download','Descargar')}</a> · <a href="#" data-aire="${n}">${T('Redo','Repetir')}</a>${r.dg?`<br><small style="color:#888;font-size:11px">${String(r.dg).replace(/[<>&]/g,'').slice(0,220)}</small>`:''}</figcaption></figure>`;
   if(r.busy)return `<figure class="aif ld"><div class="aisp"></div><figcaption>${L} · ${T('creating and checking… 30-90 s','creando y revisando… 30-90 s')}</figcaption></figure>`;
-  return `<figure class="aif"><div class="aie">${r.err?`<span>${r.err}</span><br>`:''}<button type="button" class="aiv" data-aigo="${n}">✨ ${r.err?T('Try again','Intentar otra vez'):T('Create photo','Crear foto')}</button></div><figcaption>${L}</figcaption></figure>`}).join('')}</div><p class="aim">${T('If you change your design, the photos you already made are created again for the new version.','Si cambia su diseño, las fotos que ya hizo se crean otra vez para la nueva versión.')}</p>`;
+  return `<figure class="aif"><div class="aie">${r.err?`<span>${r.err}</span><br>`:''}<button type="button" class="aiv" data-aigo="${n}">✨ ${r.err?T('Try again','Intentar otra vez'):T('Create photo','Crear foto')}</button></div><figcaption>${L}</figcaption></figure>`}).join('')}</div><p class="aim">${T('Tap “Create photo” on each view you want. If you change your design, tap it again to see the new version.','Toque “Crear foto” en cada vista que quiera. Si cambia su diseño, tóquelo otra vez para ver la nueva versión.')}</p>`;
  b.querySelectorAll('[data-aigo]').forEach(x=>x.onclick=()=>run(true,[x.dataset.aigo]));
  b.querySelectorAll('[data-aire]').forEach(x=>x.onclick=e=>{e.preventDefault();run(true,[x.dataset.aire])});
  const imgs=cells.filter(([n])=>PH[n]&&PH[n].img).map(([n])=>({name:n,img:PH[n].img}));
@@ -1171,7 +1171,7 @@ async function gen(n,c,c2,key,cells,force){
 async function run(force,only){const ep=(window.DLAB_AI_ENDPOINT||'').trim();if(!ep){paint('off');return}
  const cells=pickCells();if(!cells.length){paint('err',null,T('Could not read the mockup views.','No se pudieron leer las vistas del mockup.'));return}
  const key=describe()+'|'+cells.length+'|'+logoSig();
- if(PKEY!==key){PKEY=key;PH={};if(!only&&MADE.size)only=[...MADE]}
+ if(PKEY!==key){PKEY=key;PH={}}
  cells.forEach(([n])=>{const ck=AICACHE[key+'|'+n];if(ck&&!(PH[n]&&PH[n].img))PH[n]={img:ck}});
  const todo=(only||[]).length?cells.filter(([n])=>only.includes(n)&&!(PH[n]&&PH[n].busy)&&(force||!(PH[n]&&PH[n].img))&&!(!force&&AICACHE[key+'|'+n])):[];
  paint('grid',cells);
