@@ -40,6 +40,14 @@ export default {
     if (!ok) return J({ error: 'origin not allowed' }, 403, cors);
 
     let body; try { body = await req.json() } catch (e) { return J({ error: 'bad json' }, 400, cors) }
+    if (url.pathname.replace(/\/$/, '') === '/quota') {
+      const lim = +(env.CLIENT_LIMIT || 12) * 4;
+      if (await adminFrom(req, env)) return J({ left: null, limit: lim, admin: true }, 200, cors);
+      if (!env.DB) return J({ left: null, limit: lim }, 200, cors);
+      const em = String(body.email || '').toLowerCase().slice(0, 80), who = em || ('ip:' + (req.headers.get('cf-connecting-ip') || 'x'));
+      let used = 0; try { used = ((await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind('cl:' + who).first()) || {}).n || 0 } catch (_) {}
+      return J({ left: Math.max(0, lim - used), limit: lim }, 200, cors);
+    }
     const views = (body.views || []).slice(0, 4).filter(v => v && typeof v.jpg === 'string' && v.jpg.length < 1500000);
     if (!views.length) return J({ error: 'no views' }, 400, cors);
     const desc = String(body.prompt || '').slice(0, 7000);
@@ -49,13 +57,16 @@ export default {
     const day0 = new Date().toISOString().slice(0, 10), ip = req.headers.get('cf-connecting-ip') || 'x', em = String(body.email || '').toLowerCase().slice(0, 80);
     const dk = String(body.design || '').slice(0, 64);
     const admin = await adminFrom(req, env);
+    let left = null;
     if (env.DB && !admin) {
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_usage (k TEXT PRIMARY KEY, n INTEGER)').run();
       const get = async k => ((await env.DB.prepare('SELECT n FROM ai_usage WHERE k=?').bind(k).first()) || {}).n || 0;
       const bump = k => env.DB.prepare('INSERT INTO ai_usage (k,n) VALUES (?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(k).run();
       const who = em || ('ip:' + ip);
       if (dk && await get('dk:' + who + ':' + dk) >= 2) return J({ error: 'same_design', message: 'Photos for this design were already created' }, 429, cors);
-      if (await get('cl:' + who) >= limit) return J({ error: 'limit', message: 'Client limit reached' }, 429, cors);
+      const used0 = await get('cl:' + who);
+      if (used0 + views.length > limit) return J({ error: 'limit', message: 'Client limit reached', left: Math.max(0, limit - used0), limit }, 429, cors);
+      left = limit - used0 - views.length;
       if (await get('ip:' + day0 + ':' + ip) >= limit * 3) return J({ error: 'limit', message: 'Too many today' }, 429, cors);
       for (let i = 0; i < views.length; i++) { await bump('cl:' + who); await bump('ip:' + day0 + ':' + ip); } if (dk) await bump('dk:' + who + ':' + dk);
     } else if (env.RL && !admin) {
@@ -93,7 +104,7 @@ export default {
       return { img: best.img, checked: true, pass: false, problems: best.problems.slice(0, 6), tries };
     };
     const out = await Promise.all(views.map(v => runChecked(v).then(r => Object.assign({ name: v.name }, r), e => ({ name: v.name, error: String(e && e.message || e).slice(0, 300) }))));
-    return J({ images: out, provider, ver: 'v3-check' }, 200, cors);
+    return J({ images: out, provider, ver: 'v3-check', left, limit: admin ? null : limit }, 200, cors);
   }
 };
 
