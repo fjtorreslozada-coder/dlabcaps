@@ -143,14 +143,25 @@ async function verify(env, v, desc, img) {
     'Ignore lighting, background, small shading differences and fabric texture details. ' +
     'Answer only JSON: {"pass": true|false, "problems": ["short fix instruction", ...]}. pass is true only if there are no real mistakes.\n\nVIEW NOTE: ' + String(v.note || '').slice(0, 1200) + '\n\nSPECIFICATION:\n' + desc;
   const parts = [{ inline_data: { mime_type: 'image/jpeg', data: ref } }].concat(ref2 ? [{ inline_data: { mime_type: 'image/jpeg', data: ref2 } }] : []).concat([{ inline_data: { mime_type: m[1], data: m[2] } }, { text: q }]);
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.VERIFY_MODEL || 'gemini-2.5-flash'}:generateContent`, {
-    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0, thinkingConfig: { thinkingBudget: 1024 } } })
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error((j.error && j.error.message) || ('verify ' + r.status));
-  const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('');
-  const o = JSON.parse(txt.replace(/^```json|```$/g, '').trim());
+  const models = [...new Set([env.VERIFY_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'].filter(Boolean))];
+  let o = null, errs = [];
+  for (const model of models) {
+    try {
+      const gc = { temperature: 0, responseMimeType: 'application/json' };
+      if (/2\.5/.test(model)) gc.thinkingConfig = { thinkingBudget: 512 };
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: gc })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(model + ': ' + ((j.error && j.error.message) || r.status));
+      const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('');
+      const mm = txt.match(/\{[\s\S]*\}/);
+      if (!mm) throw new Error(model + ': no json (' + String(((j.candidates || [])[0] || {}).finishReason || txt.slice(0, 60)) + ')');
+      o = JSON.parse(mm[0]); break;
+    } catch (e) { errs.push(String(e && e.message || e).slice(0, 120)); }
+  }
+  if (!o) throw new Error(errs.join(' | '));
   const problems = Array.isArray(o.problems) ? o.problems.map(x => String(x).slice(0, 200)).filter(Boolean) : [];
   return o.pass ? { pass: true, problems: [] } : { pass: false, problems: problems.length ? problems : ['does not match the drawing'] };
 }
